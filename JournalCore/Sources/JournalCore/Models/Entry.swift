@@ -1,18 +1,18 @@
 import Foundation
 
-public enum ClassType: String, Codable, CaseIterable, Sendable {
+public enum ClassType: String, Codable, CaseIterable, Hashable, Sendable {
     case gi
     case noGi = "no_gi"
     case openMat = "open_mat"
     case other
 }
 
-public enum EntryStatus: String, Codable, Sendable {
+public enum EntryStatus: String, Codable, Hashable, Sendable {
     case pending
     case structured
 }
 
-public enum TechniqueType: String, Codable, CaseIterable, Sendable {
+public enum TechniqueType: String, Codable, CaseIterable, Hashable, Sendable {
     case sweep
     case submission
     case escape
