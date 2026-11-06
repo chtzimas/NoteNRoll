@@ -1,0 +1,33 @@
+# Local only: Claude Code files and planning docs
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+KICKOFF_PROMPT.md
+docs/
+assets/
+
+# Xcode
+build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
