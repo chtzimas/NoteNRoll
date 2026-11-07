@@ -1,13 +1,14 @@
 import Foundation
 import JournalCore
 
-/// Composition root. The one place the app wires concrete `JournalCore` types
-/// together; feature views only ever see `EntryRepository` and `ExtractionService`.
+/// Composition root. The one place concrete `JournalCore` Data types (GRDB, Keychain,
+/// `DirectClaudeClient`) get wired together and handed to use cases — everything
+/// above this, views and view models alike, depends only on the use-case protocols.
 @MainActor
 final class AppEnvironment: ObservableObject {
-    let entryRepository: EntryRepository
-    let extractionService: ExtractionService
-    let keychainStore: KeychainStore
+    let entryUseCase: any EntryUseCase
+    let extractionUseCase: any ExtractionUseCase
+    let apiKeyUseCase: any APIKeyUseCase
 
     init() {
         let database: AppDatabase
@@ -17,12 +18,13 @@ final class AppEnvironment: ObservableObject {
             fatalError("Failed to open the journal database: \(error)")
         }
 
-        let keychainStore = KeychainStore()
-        let client = DirectClaudeClient(apiKeyProvider: { try keychainStore.requireAPIKey() })
+        let apiKeyStore = KeychainStore()
+        let repository = GRDBEntryRepository(database: database)
+        let llmClient = DirectClaudeClient(apiKeyStore: apiKeyStore)
 
-        self.entryRepository = EntryRepository(database: database)
-        self.extractionService = ExtractionService(llmClient: client)
-        self.keychainStore = keychainStore
+        self.entryUseCase = DefaultEntryUseCase(repository: repository)
+        self.extractionUseCase = DefaultExtractionUseCase(llmClient: llmClient)
+        self.apiKeyUseCase = DefaultAPIKeyUseCase(store: apiKeyStore)
     }
 
     private static func databaseURL() -> URL {

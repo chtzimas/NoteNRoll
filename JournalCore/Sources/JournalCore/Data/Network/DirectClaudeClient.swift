@@ -11,22 +11,22 @@ public struct DirectClaudeClient: LLMClient {
     private let transport: HTTPTransport
     private let baseURL: URL
     private let anthropicVersion: String
-    private let apiKeyProvider: @Sendable () throws -> String
+    private let apiKeyStore: any APIKeyStore
 
     public init(
         transport: HTTPTransport = URLSession.shared,
         baseURL: URL = DirectClaudeClient.defaultBaseURL,
         anthropicVersion: String = DirectClaudeClient.defaultAnthropicVersion,
-        apiKeyProvider: @escaping @Sendable () throws -> String
+        apiKeyStore: any APIKeyStore
     ) {
         self.transport = transport
         self.baseURL = baseURL
         self.anthropicVersion = anthropicVersion
-        self.apiKeyProvider = apiKeyProvider
+        self.apiKeyStore = apiKeyStore
     }
 
     public func send(_ request: MessageRequest) async throws -> MessageResponse {
-        let apiKey = try apiKeyProvider()
+        let apiKey = try apiKeyStore.requireAPIKey()
 
         var urlRequest = URLRequest(url: baseURL)
         urlRequest.httpMethod = "POST"

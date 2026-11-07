@@ -2,17 +2,23 @@ import SwiftUI
 import JournalCore
 
 struct LogEntryView: View {
-    @State private var sessionDate = Date()
-    @State private var classType: ClassType = .gi
-    @State private var rawText = ""
+    private let extractionUseCase: any ExtractionUseCase
+    private let entryUseCase: any EntryUseCase
+
+    @StateObject private var form = LogEntryViewModel()
     @State private var isPresentingDraft = false
+
+    init(extractionUseCase: any ExtractionUseCase, entryUseCase: any EntryUseCase) {
+        self.extractionUseCase = extractionUseCase
+        self.entryUseCase = entryUseCase
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    DatePicker("Date", selection: $sessionDate, displayedComponents: .date)
-                    Picker("Class type", selection: $classType) {
+                    DatePicker("Date", selection: $form.sessionDate, displayedComponents: .date)
+                    Picker("Class type", selection: $form.classType) {
                         ForEach(ClassType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
@@ -20,7 +26,7 @@ struct LogEntryView: View {
                 }
 
                 Section("What happened") {
-                    TextEditor(text: $rawText)
+                    TextEditor(text: $form.rawText)
                         .frame(minHeight: 160)
                 }
 
@@ -28,26 +34,23 @@ struct LogEntryView: View {
                     Button("Structure it") {
                         isPresentingDraft = true
                     }
-                    .disabled(rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!form.canSubmit)
                 }
             }
             .navigationTitle("Log")
             .sheet(isPresented: $isPresentingDraft) {
                 NavigationStack {
                     DraftReviewView(
-                        sessionDate: sessionDate,
-                        classType: classType,
-                        rawText: rawText,
+                        sessionDate: form.sessionDate,
+                        classType: form.classType,
+                        rawText: form.rawText,
                         existingEntryID: nil,
-                        onSaved: { rawText = "" }
+                        extractionUseCase: extractionUseCase,
+                        entryUseCase: entryUseCase,
+                        onSaved: { form.reset() }
                     )
                 }
             }
         }
     }
-}
-
-#Preview {
-    LogEntryView()
-        .environmentObject(AppEnvironment())
 }

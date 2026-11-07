@@ -1,9 +1,9 @@
 import Foundation
 import Security
 
-/// Reads and writes the user's Claude API key in the Keychain. Nothing else in this
-/// app stores secrets, and the key never touches `UserDefaults` or disk in plain text.
-public struct KeychainStore: Sendable {
+/// `APIKeyStore` backed by the Keychain. Nothing else in this app stores secrets,
+/// and the key never touches `UserDefaults` or disk in plain text.
+public struct KeychainStore: APIKeyStore {
     private let service: String
 
     public init(service: String = "com.notenroll.claude-api-key") {
@@ -44,15 +44,6 @@ public struct KeychainStore: Sendable {
         default:
             throw KeychainError.unhandled(status: status)
         }
-    }
-
-    /// Convenience for `LLMClient` implementations that need the key or a typed
-    /// failure, rather than an optional.
-    public func requireAPIKey() throws -> String {
-        guard let key = try loadAPIKey() else {
-            throw LLMClientError.missingAPIKey
-        }
-        return key
     }
 
     public func deleteAPIKey() throws {

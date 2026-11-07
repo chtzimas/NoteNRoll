@@ -1,9 +1,9 @@
 import Foundation
 import GRDB
 
-/// Read/write access to `entry` rows. The only place in the app that constructs a
-/// GRDB query — feature code talks to this, never to `AppDatabase` directly.
-public struct EntryRepository: Sendable {
+/// GRDB-backed `EntryRepository`. The only place in the app that constructs a GRDB
+/// query — nothing above the `EntryRepository` protocol is allowed to know that.
+public struct GRDBEntryRepository: EntryRepository {
     private let database: AppDatabase
 
     public init(database: AppDatabase) {

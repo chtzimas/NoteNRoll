@@ -23,6 +23,13 @@ private struct FailingTransport: HTTPTransport {
     }
 }
 
+private struct FakeAPIKeyStore: APIKeyStore {
+    var key: String?
+    func save(apiKey: String) throws {}
+    func loadAPIKey() throws -> String? { key }
+    func deleteAPIKey() throws {}
+}
+
 @Suite
 struct DirectClaudeClientTests {
     private func makeRequest() -> MessageRequest {
@@ -49,7 +56,7 @@ struct DirectClaudeClientTests {
         """
         let client = DirectClaudeClient(
             transport: StubTransport(statusCode: 200, body: Data(body.utf8)),
-            apiKeyProvider: { "test-key" }
+            apiKeyStore: FakeAPIKeyStore(key: "test-key")
         )
 
         let response = try await client.send(makeRequest())
@@ -66,7 +73,7 @@ struct DirectClaudeClientTests {
     func nonSuccessStatusThrowsHTTPError() async throws {
         let client = DirectClaudeClient(
             transport: StubTransport(statusCode: 401, body: Data(#"{"error": "unauthorized"}"#.utf8)),
-            apiKeyProvider: { "bad-key" }
+            apiKeyStore: FakeAPIKeyStore(key: "bad-key")
         )
 
         await #expect(throws: LLMClientError.self) {
@@ -78,7 +85,7 @@ struct DirectClaudeClientTests {
     func malformedBodyThrowsDecodingError() async throws {
         let client = DirectClaudeClient(
             transport: StubTransport(statusCode: 200, body: Data("not json".utf8)),
-            apiKeyProvider: { "test-key" }
+            apiKeyStore: FakeAPIKeyStore(key: "test-key")
         )
 
         await #expect(throws: LLMClientError.self) {
@@ -90,7 +97,7 @@ struct DirectClaudeClientTests {
     func transportFailureThrowsNetworkError() async throws {
         let client = DirectClaudeClient(
             transport: FailingTransport(),
-            apiKeyProvider: { "test-key" }
+            apiKeyStore: FakeAPIKeyStore(key: "test-key")
         )
 
         await #expect(throws: LLMClientError.self) {
@@ -102,7 +109,7 @@ struct DirectClaudeClientTests {
     func missingAPIKeyPropagatesBeforeAnyRequest() async throws {
         let client = DirectClaudeClient(
             transport: FailingTransport(),
-            apiKeyProvider: { throw LLMClientError.missingAPIKey }
+            apiKeyStore: FakeAPIKeyStore(key: nil)
         )
 
         await #expect(throws: LLMClientError.self) {

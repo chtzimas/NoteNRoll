@@ -1,16 +1,4 @@
-import Foundation
-
-public enum ExtractionError: Error, Sendable, Equatable {
-    /// The model replied without the forced tool call — shouldn't happen with
-    /// `tool_choice` set, but a malformed/unexpected response is still possible.
-    case noToolCallReturned
-    case invalidDraft(String)
-}
-
-/// Turns raw note text into a `DraftExtraction` via one forced tool call. Doesn't
-/// touch storage or the UI — callers decide what to do with the draft (show it for
-/// review, discard it, retry).
-public struct ExtractionService: Sendable {
+public struct DefaultExtractionUseCase: ExtractionUseCase {
     private let llmClient: any LLMClient
     private let model: String
     private let maxTokens: Int

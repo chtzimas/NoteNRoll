@@ -3,10 +3,10 @@ import Testing
 @testable import JournalCore
 
 @Suite
-struct EntryRepositoryTests {
-    private func makeRepository() throws -> EntryRepository {
+struct GRDBEntryRepositoryTests {
+    private func makeRepository() throws -> GRDBEntryRepository {
         let database = try AppDatabase.inMemory()
-        return EntryRepository(database: database)
+        return GRDBEntryRepository(database: database)
     }
 
     private func samplePendingEntry(sessionDate: Date = Date()) -> Entry {

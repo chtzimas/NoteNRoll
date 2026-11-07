@@ -6,36 +6,33 @@ import JournalCore
 /// (`existingEntryID == nil`) and when retrying a pending entry from the Journal
 /// list (`existingEntryID` set, so saving updates that row instead of inserting).
 struct DraftReviewView: View {
-    @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: DraftReviewViewModel
+    private let onSaved: () -> Void
 
-    let sessionDate: Date
-    let classType: ClassType
-    let rawText: String
-    let existingEntryID: UUID?
-    var onSaved: () -> Void = {}
-
-    @State private var phase: Phase = .extracting
-    @State private var errorMessage: String?
-
-    @State private var title = ""
-    @State private var techniques: [Technique] = []
-    @State private var coachDetails = ""
-    @State private var whatWorked = ""
-    @State private var whatWentWrong = ""
-    @State private var openQuestions: [String] = []
-    @State private var durationMinutesText = ""
-    @State private var isSaving = false
-
-    private enum Phase: Equatable {
-        case extracting
-        case reviewing
-        case failed
+    init(
+        sessionDate: Date,
+        classType: ClassType,
+        rawText: String,
+        existingEntryID: UUID?,
+        extractionUseCase: any ExtractionUseCase,
+        entryUseCase: any EntryUseCase,
+        onSaved: @escaping () -> Void = {}
+    ) {
+        _viewModel = StateObject(wrappedValue: DraftReviewViewModel(
+            sessionDate: sessionDate,
+            classType: classType,
+            rawText: rawText,
+            existingEntryID: existingEntryID,
+            extractionUseCase: extractionUseCase,
+            entryUseCase: entryUseCase
+        ))
+        self.onSaved = onSaved
     }
 
     var body: some View {
         Group {
-            switch phase {
+            switch viewModel.phase {
             case .extracting:
                 ProgressView("Structuring your note…")
             case .failed:
@@ -50,152 +47,81 @@ struct DraftReviewView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            if phase == .reviewing {
+            if viewModel.phase == .reviewing {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save entry") { Task { await save() } }
-                        .disabled(isSaving)
+                    Button("Save entry") { Task { await save { await viewModel.save() } } }
+                        .disabled(viewModel.isSaving)
                 }
             }
         }
-        .task { await runExtraction() }
+        .task { await viewModel.runExtraction() }
     }
 
     private var failedView: some View {
         ContentUnavailableView {
             Label("Couldn't structure this note", systemImage: "exclamationmark.triangle")
         } description: {
-            Text(errorMessage ?? "Something went wrong talking to Claude.")
+            Text(viewModel.errorMessage ?? "Something went wrong talking to Claude.")
         } actions: {
-            Button("Save as-is, structure later") { Task { await saveAsPending() } }
-            Button("Try again") { Task { await runExtraction() } }
+            Button("Save as-is, structure later") { Task { await save { await viewModel.saveAsPending() } } }
+            Button("Try again") { Task { await viewModel.runExtraction() } }
         }
     }
 
     private var reviewForm: some View {
         Form {
             Section("Raw note") {
-                Text(rawText)
+                Text(viewModel.rawText)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             Section("Title") {
-                TextField("Title", text: $title)
+                TextField("Title", text: $viewModel.title)
             }
 
             Section("Techniques") {
-                ForEach(techniques.indices, id: \.self) { index in
-                    TechniqueRow(technique: $techniques[index])
+                ForEach(viewModel.techniques.indices, id: \.self) { index in
+                    TechniqueRow(technique: $viewModel.techniques[index])
                 }
-                .onDelete { techniques.remove(atOffsets: $0) }
+                .onDelete { viewModel.techniques.remove(atOffsets: $0) }
                 Button("Add technique") {
-                    techniques.append(Technique(name: "", type: .other))
+                    viewModel.techniques.append(Technique(name: "", type: .other))
                 }
             }
 
             Section("Coach's details") {
-                TextField("What the coach said", text: $coachDetails, axis: .vertical)
+                TextField("What the coach said", text: $viewModel.coachDetails, axis: .vertical)
             }
             Section("What worked") {
-                TextField("What worked", text: $whatWorked, axis: .vertical)
+                TextField("What worked", text: $viewModel.whatWorked, axis: .vertical)
             }
             Section("What went wrong") {
-                TextField("What went wrong", text: $whatWentWrong, axis: .vertical)
+                TextField("What went wrong", text: $viewModel.whatWentWrong, axis: .vertical)
             }
 
             Section("Open questions") {
-                ForEach($openQuestions.indices, id: \.self) { index in
-                    TextField("Question", text: $openQuestions[index])
+                ForEach(viewModel.openQuestions.indices, id: \.self) { index in
+                    TextField("Question", text: $viewModel.openQuestions[index])
                 }
-                .onDelete { openQuestions.remove(atOffsets: $0) }
-                Button("Add question") { openQuestions.append("") }
+                .onDelete { viewModel.openQuestions.remove(atOffsets: $0) }
+                Button("Add question") { viewModel.openQuestions.append("") }
             }
 
             Section("Duration") {
-                TextField("Minutes", text: $durationMinutesText)
+                TextField("Minutes", text: $viewModel.durationMinutesText)
                     .keyboardType(.numberPad)
             }
         }
     }
 
-    private func runExtraction() async {
-        phase = .extracting
-        errorMessage = nil
-        do {
-            let draft = try await environment.extractionService.extract(rawText: rawText)
-            apply(draft)
-            phase = .reviewing
-        } catch {
-            errorMessage = String(describing: error)
-            phase = .failed
-        }
-    }
-
-    private func apply(_ draft: DraftExtraction) {
-        title = draft.title ?? ""
-        techniques = draft.techniques
-        coachDetails = draft.coachDetails ?? ""
-        whatWorked = draft.whatWorked ?? ""
-        whatWentWrong = draft.whatWentWrong ?? ""
-        openQuestions = draft.openQuestions
-        durationMinutesText = draft.durationMinutes.map(String.init) ?? ""
-    }
-
-    private func save() async {
-        isSaving = true
-        defer { isSaving = false }
-
-        let entry = Entry(
-            id: existingEntryID ?? UUID(),
-            sessionDate: sessionDate,
-            classType: classType,
-            rawText: rawText,
-            status: .structured,
-            title: title.isEmpty ? nil : title,
-            techniques: techniques.filter { !$0.name.isEmpty },
-            coachDetails: coachDetails.isEmpty ? nil : coachDetails,
-            whatWorked: whatWorked.isEmpty ? nil : whatWorked,
-            whatWentWrong: whatWentWrong.isEmpty ? nil : whatWentWrong,
-            openQuestions: openQuestions.filter { !$0.isEmpty },
-            durationMinutes: Int(durationMinutesText)
-        )
-
-        do {
-            if existingEntryID != nil {
-                try await environment.entryRepository.update(entry)
-            } else {
-                try await environment.entryRepository.insert(entry)
-            }
-            NotificationCenter.default.post(name: .entriesDidChange, object: nil)
-            onSaved()
-            dismiss()
-        } catch {
-            errorMessage = String(describing: error)
-        }
-    }
-
-    /// Keeps the raw text as a pending entry when extraction fails, so nothing the
-    /// user typed is lost — they can retry structuring it later from the Journal list.
-    private func saveAsPending() async {
-        let entry = Entry(
-            id: existingEntryID ?? UUID(),
-            sessionDate: sessionDate,
-            classType: classType,
-            rawText: rawText,
-            status: .pending
-        )
-        do {
-            if existingEntryID != nil {
-                try await environment.entryRepository.update(entry)
-            } else {
-                try await environment.entryRepository.insert(entry)
-            }
-            NotificationCenter.default.post(name: .entriesDidChange, object: nil)
-            onSaved()
-            dismiss()
-        } catch {
-            errorMessage = String(describing: error)
-        }
+    /// Runs a save operation on the view model and, only on success, notifies the
+    /// caller and dismisses — on failure the view model's `errorMessage` is left
+    /// for the view to show instead.
+    private func save(_ operation: () async -> Entry?) async {
+        guard await operation() != nil else { return }
+        onSaved()
+        dismiss()
     }
 }
 

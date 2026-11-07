@@ -2,36 +2,22 @@ import SwiftUI
 import JournalCore
 
 struct JournalListView: View {
-    @EnvironmentObject private var environment: AppEnvironment
-    @State private var entries: [Entry] = []
-    @State private var classTypeFilter: ClassType?
-    @State private var searchText = ""
-    @State private var loadError: String?
+    @StateObject private var viewModel: JournalListViewModel
+    private let extractionUseCase: any ExtractionUseCase
+    private let entryUseCase: any EntryUseCase
 
-    private var filteredEntries: [Entry] {
-        entries.filter { entry in
-            let matchesClassType = classTypeFilter == nil || entry.classType == classTypeFilter
-            let matchesSearch = searchText.isEmpty
-                || (entry.title ?? "").localizedCaseInsensitiveContains(searchText)
-                || entry.techniques.contains { $0.name.localizedCaseInsensitiveContains(searchText) }
-            return matchesClassType && matchesSearch
-        }
-    }
-
-    private var pendingEntries: [Entry] {
-        filteredEntries.filter { $0.status == .pending }
-    }
-
-    private var structuredEntries: [Entry] {
-        filteredEntries.filter { $0.status == .structured }
+    init(entryUseCase: any EntryUseCase, extractionUseCase: any ExtractionUseCase) {
+        self.entryUseCase = entryUseCase
+        self.extractionUseCase = extractionUseCase
+        _viewModel = StateObject(wrappedValue: JournalListViewModel(entryUseCase: entryUseCase))
     }
 
     var body: some View {
         NavigationStack {
             List {
-                if !pendingEntries.isEmpty {
+                if !viewModel.pendingEntries.isEmpty {
                     Section("Not structured yet") {
-                        ForEach(pendingEntries) { entry in
+                        ForEach(viewModel.pendingEntries) { entry in
                             NavigationLink(value: entry.id) {
                                 PendingEntryRow(entry: entry)
                             }
@@ -40,14 +26,14 @@ struct JournalListView: View {
                 }
 
                 Section {
-                    ForEach(structuredEntries) { entry in
+                    ForEach(viewModel.structuredEntries) { entry in
                         NavigationLink(value: entry.id) {
                             EntryRow(entry: entry)
                         }
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "Search techniques, notes")
+            .searchable(text: $viewModel.searchText, prompt: "Search techniques, notes")
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     classTypeFilterPicker
@@ -55,13 +41,16 @@ struct JournalListView: View {
             }
             .navigationTitle("Journal")
             .navigationDestination(for: UUID.self) { id in
-                if let entry = entries.first(where: { $0.id == id }) {
+                if let entry = viewModel.entry(for: id) {
                     if entry.status == .pending {
                         DraftReviewView(
                             sessionDate: entry.sessionDate,
                             classType: entry.classType,
                             rawText: entry.rawText,
-                            existingEntryID: entry.id
+                            existingEntryID: entry.id,
+                            extractionUseCase: extractionUseCase,
+                            entryUseCase: entryUseCase,
+                            onSaved: { Task { await viewModel.reload() } }
                         )
                     } else {
                         EntryDetailView(entry: entry)
@@ -69,7 +58,7 @@ struct JournalListView: View {
                 }
             }
             .overlay {
-                if entries.isEmpty {
+                if viewModel.entries.isEmpty {
                     ContentUnavailableView(
                         "No sessions yet",
                         systemImage: "figure.martial.arts",
@@ -77,35 +66,24 @@ struct JournalListView: View {
                     )
                 }
             }
-            .alert("Couldn't load journal", isPresented: .constant(loadError != nil)) {
-                Button("OK") { loadError = nil }
+            .alert("Couldn't load journal", isPresented: .constant(viewModel.loadError != nil)) {
+                Button("OK") { viewModel.loadError = nil }
             } message: {
-                Text(loadError ?? "")
+                Text(viewModel.loadError ?? "")
             }
         }
-        .task { await reload() }
-        .refreshable { await reload() }
-        .onReceive(NotificationCenter.default.publisher(for: .entriesDidChange)) { _ in
-            Task { await reload() }
-        }
+        .onAppear { Task { await viewModel.reload() } }
+        .refreshable { await viewModel.reload() }
     }
 
     private var classTypeFilterPicker: some View {
-        Picker("Class type", selection: $classTypeFilter) {
+        Picker("Class type", selection: $viewModel.classTypeFilter) {
             Text("All").tag(ClassType?.none)
             ForEach(ClassType.allCases, id: \.self) { type in
                 Text(type.displayName).tag(ClassType?.some(type))
             }
         }
         .pickerStyle(.segmented)
-    }
-
-    private func reload() async {
-        do {
-            entries = try await environment.entryRepository.listAll()
-        } catch {
-            loadError = "\(error)"
-        }
     }
 }
 
@@ -178,8 +156,4 @@ extension ClassType {
         case .other: "Other"
         }
     }
-}
-
-extension Notification.Name {
-    static let entriesDidChange = Notification.Name("entriesDidChange")
 }
