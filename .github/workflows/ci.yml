@@ -13,9 +13,6 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: macos-15
-    defaults:
-      run:
-        working-directory: JournalCore
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,11 +20,14 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Run tests
-        run: swift test
+      - name: Run JournalCore tests
+        run: cd JournalCore && swift test
 
-  architecture-check:
-    name: Retain Cycle Detection
+      - name: Run Features tests
+        run: cd Features && swift test
+
+  architecture-check-journalcore:
+    name: Retain Cycle Detection (JournalCore)
     runs-on: macos-15
     permissions:
       pull-requests: write
@@ -38,5 +38,20 @@ jobs:
       - name: SwiftAtlas
         uses: chtzimas/SwiftAtlas@v1
         with:
-          path: '.'
+          path: JournalCore
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  architecture-check-features:
+    name: Retain Cycle Detection (Features)
+    runs-on: macos-15
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SwiftAtlas
+        uses: chtzimas/SwiftAtlas@v1
+        with:
+          path: Features
           github-token: ${{ secrets.GITHUB_TOKEN }}
