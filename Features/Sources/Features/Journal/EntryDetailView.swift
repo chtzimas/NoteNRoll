@@ -57,6 +57,6 @@ struct EntryDetailView: View {
             }
         }
         .navigationTitle("Entry")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationBarTitleIfAvailable()
     }
 }

@@ -1,7 +1,9 @@
 import SwiftUI
 
-struct InsightsPlaceholderView: View {
-    var body: some View {
+public struct InsightsPlaceholderView: View {
+    public init() {}
+
+    public var body: some View {
         NavigationStack {
             ContentUnavailableView(
                 "Insights",

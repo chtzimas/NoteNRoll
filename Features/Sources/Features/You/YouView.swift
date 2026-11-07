@@ -4,14 +4,14 @@ import JournalCore
 /// Mostly a placeholder for now — belt/stripes, curriculum, import and export all
 /// arrive with later milestones. The API key field is real: extraction needs
 /// somewhere for the user to enter it, and Settings is where the brief puts it.
-struct YouView: View {
+public struct YouView: View {
     @StateObject private var viewModel: YouViewModel
 
-    init(apiKeyUseCase: any APIKeyUseCase) {
+    public init(apiKeyUseCase: any APIKeyUseCase) {
         _viewModel = StateObject(wrappedValue: YouViewModel(apiKeyUseCase: apiKeyUseCase))
     }
 
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             Form {
                 Section("Training profile") {

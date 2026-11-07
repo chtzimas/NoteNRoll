@@ -42,7 +42,7 @@ struct DraftReviewView: View {
             }
         }
         .navigationTitle("Review")
-        .navigationBarTitleDisplayMode(.inline)
+        .inlineNavigationBarTitleIfAvailable()
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
@@ -110,7 +110,7 @@ struct DraftReviewView: View {
 
             Section("Duration") {
                 TextField("Minutes", text: $viewModel.durationMinutesText)
-                    .keyboardType(.numberPad)
+                    .numberPadKeyboardIfAvailable()
             }
         }
     }

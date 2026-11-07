@@ -6,6 +6,8 @@ options:
 packages:
   JournalCore:
     path: JournalCore
+  Features:
+    path: Features
 targets:
   NoteNRoll:
     type: application
@@ -15,6 +17,7 @@ targets:
       - path: NoteNRoll
     dependencies:
       - package: JournalCore
+      - package: Features
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.notenroll.app

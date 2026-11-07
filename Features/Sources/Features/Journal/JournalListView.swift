@@ -1,18 +1,18 @@
 import SwiftUI
 import JournalCore
 
-struct JournalListView: View {
+public struct JournalListView: View {
     @StateObject private var viewModel: JournalListViewModel
     private let extractionUseCase: any ExtractionUseCase
     private let entryUseCase: any EntryUseCase
 
-    init(entryUseCase: any EntryUseCase, extractionUseCase: any ExtractionUseCase) {
+    public init(entryUseCase: any EntryUseCase, extractionUseCase: any ExtractionUseCase) {
         self.entryUseCase = entryUseCase
         self.extractionUseCase = extractionUseCase
         _viewModel = StateObject(wrappedValue: JournalListViewModel(entryUseCase: entryUseCase))
     }
 
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             List {
                 if !viewModel.pendingEntries.isEmpty {

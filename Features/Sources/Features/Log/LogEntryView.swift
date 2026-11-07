@@ -1,19 +1,19 @@
 import SwiftUI
 import JournalCore
 
-struct LogEntryView: View {
+public struct LogEntryView: View {
     private let extractionUseCase: any ExtractionUseCase
     private let entryUseCase: any EntryUseCase
 
     @StateObject private var form = LogEntryViewModel()
     @State private var isPresentingDraft = false
 
-    init(extractionUseCase: any ExtractionUseCase, entryUseCase: any EntryUseCase) {
+    public init(extractionUseCase: any ExtractionUseCase, entryUseCase: any EntryUseCase) {
         self.extractionUseCase = extractionUseCase
         self.entryUseCase = entryUseCase
     }
 
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             Form {
                 Section {

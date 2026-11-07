@@ -1,7 +1,9 @@
 import SwiftUI
 
-struct AskPlaceholderView: View {
-    var body: some View {
+public struct AskPlaceholderView: View {
+    public init() {}
+
+    public var body: some View {
         NavigationStack {
             ContentUnavailableView(
                 "Ask",

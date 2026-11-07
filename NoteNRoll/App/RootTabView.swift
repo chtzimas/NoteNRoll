@@ -1,4 +1,5 @@
 import SwiftUI
+import Features
 
 struct RootTabView: View {
     @EnvironmentObject private var environment: AppEnvironment
