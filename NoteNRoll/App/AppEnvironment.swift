@@ -8,7 +8,10 @@ import JournalCore
 final class AppEnvironment: ObservableObject {
     let entryUseCase: any EntryUseCase
     let extractionUseCase: any ExtractionUseCase
+    let followUpQuestionsUseCase: any FollowUpQuestionsUseCase
     let apiKeyUseCase: any APIKeyUseCase
+    let notificationScheduler: any NotificationScheduler
+    let speechTranscriber: any SpeechTranscriber
 
     init() {
         let database: AppDatabase
@@ -24,7 +27,10 @@ final class AppEnvironment: ObservableObject {
 
         self.entryUseCase = DefaultEntryUseCase(repository: repository)
         self.extractionUseCase = DefaultExtractionUseCase(llmClient: llmClient)
+        self.followUpQuestionsUseCase = DefaultFollowUpQuestionsUseCase(llmClient: llmClient)
         self.apiKeyUseCase = DefaultAPIKeyUseCase(store: apiKeyStore)
+        self.notificationScheduler = UserNotificationScheduler()
+        self.speechTranscriber = SpeechKitTranscriber()
     }
 
     private static func databaseURL() -> URL {

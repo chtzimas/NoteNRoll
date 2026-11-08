@@ -11,8 +11,18 @@ final class DraftReviewViewModel: ObservableObject {
 
     let sessionDate: Date
     let classType: ClassType
+    /// Stored verbatim as the entry's raw text — "the raw transcript is kept as
+    /// the original," even when `extractionContext` below adds follow-up Q&A.
     let rawText: String
+    /// What's actually sent to the extraction call. Defaults to `rawText`, but a
+    /// follow-up flow passes `rawText` plus the answered questions, so extraction
+    /// sees the clarifications without them polluting the stored raw note.
+    let extractionContext: String
     let existingEntryID: UUID?
+    /// When true, skips the extraction call entirely and opens straight into the
+    /// (empty) editable form — keeps the app usable as a plain journal when
+    /// Claude isn't reachable at all (no key, offline, rate-limited).
+    let startsInManualMode: Bool
 
     @Published private(set) var phase: Phase = .extracting
     @Published var errorMessage: String?
@@ -32,23 +42,38 @@ final class DraftReviewViewModel: ObservableObject {
         sessionDate: Date,
         classType: ClassType,
         rawText: String,
+        extractionContext: String? = nil,
         existingEntryID: UUID?,
+        startsInManualMode: Bool = false,
         extractionUseCase: any ExtractionUseCase,
         entryUseCase: any EntryUseCase
     ) {
         self.sessionDate = sessionDate
         self.classType = classType
         self.rawText = rawText
+        self.extractionContext = extractionContext ?? rawText
         self.existingEntryID = existingEntryID
+        self.startsInManualMode = startsInManualMode
         self.extractionUseCase = extractionUseCase
         self.entryUseCase = entryUseCase
+        if startsInManualMode {
+            self.phase = .reviewing
+        }
+    }
+
+    /// Lets the user skip Claude entirely and fill in the structured fields by
+    /// hand, from the failure screen — same escape hatch as `startsInManualMode`,
+    /// reachable after a failed attempt instead of before the first one.
+    func enterManualMode() {
+        errorMessage = nil
+        phase = .reviewing
     }
 
     func runExtraction() async {
         phase = .extracting
         errorMessage = nil
         do {
-            let draft = try await extractionUseCase.extract(rawText: rawText)
+            let draft = try await extractionUseCase.extract(rawText: extractionContext)
             apply(draft)
             phase = .reviewing
         } catch {

@@ -77,6 +77,27 @@ struct DraftReviewViewModelTests {
     }
 
     @Test
+    func extractionUsesContextButSaveKeepsRawTextPristine() async throws {
+        let extraction = FakeExtractionUseCase()
+        let entryUseCase = FakeEntryUseCase()
+        let viewModel = DraftReviewViewModel(
+            sessionDate: Date(),
+            classType: .gi,
+            rawText: "Worked butterfly sweeps today.",
+            extractionContext: "Worked butterfly sweeps today.\n\nQ: Which side?\nA: Left.",
+            existingEntryID: nil,
+            extractionUseCase: extraction,
+            entryUseCase: entryUseCase
+        )
+
+        await viewModel.runExtraction()
+        let saved = await viewModel.save()
+
+        #expect(extraction.receivedRawText == "Worked butterfly sweeps today.\n\nQ: Which side?\nA: Left.")
+        #expect(saved?.rawText == "Worked butterfly sweeps today.")
+    }
+
+    @Test
     func saveAsPendingGoesThroughSavePending() async throws {
         let entryUseCase = FakeEntryUseCase()
         let viewModel = makeViewModel(entryUseCase: entryUseCase)
@@ -85,5 +106,56 @@ struct DraftReviewViewModelTests {
 
         #expect(saved?.status == .pending)
         #expect(entryUseCase.pendingSaveCount == 1)
+    }
+
+    @Test
+    func startsInManualModeEntersReviewingWithoutCallingExtraction() async throws {
+        let extraction = FakeExtractionUseCase()
+        let viewModel = DraftReviewViewModel(
+            sessionDate: Date(),
+            classType: .gi,
+            rawText: "Worked butterfly sweeps today.",
+            existingEntryID: nil,
+            startsInManualMode: true,
+            extractionUseCase: extraction,
+            entryUseCase: FakeEntryUseCase()
+        )
+
+        #expect(viewModel.phase == .reviewing)
+        #expect(extraction.receivedRawText == nil)
+    }
+
+    @Test
+    func enterManualModeMovesFromFailedToReviewing() async throws {
+        let extraction = FakeExtractionUseCase()
+        extraction.result = .failure(ExtractionError.noToolCallReturned)
+        let viewModel = makeViewModel(extractionUseCase: extraction)
+        await viewModel.runExtraction()
+        #expect(viewModel.phase == .failed)
+
+        viewModel.enterManualMode()
+
+        #expect(viewModel.phase == .reviewing)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test
+    func manualModeEntryCanStillBeSaved() async throws {
+        let entryUseCase = FakeEntryUseCase()
+        let viewModel = DraftReviewViewModel(
+            sessionDate: Date(),
+            classType: .noGi,
+            rawText: "Worked takedowns.",
+            existingEntryID: nil,
+            startsInManualMode: true,
+            extractionUseCase: FakeExtractionUseCase(),
+            entryUseCase: entryUseCase
+        )
+        viewModel.title = "Hand-entered title"
+
+        let saved = await viewModel.save()
+
+        #expect(saved?.status == .structured)
+        #expect(entryUseCase.approvedDrafts.first?.title == "Hand-entered title")
     }
 }

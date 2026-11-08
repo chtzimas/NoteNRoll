@@ -5,10 +5,19 @@ public struct JournalListView: View {
     @StateObject private var viewModel: JournalListViewModel
     private let extractionUseCase: any ExtractionUseCase
     private let entryUseCase: any EntryUseCase
+    private let followUpQuestionsUseCase: any FollowUpQuestionsUseCase
+    private let notificationScheduler: any NotificationScheduler
 
-    public init(entryUseCase: any EntryUseCase, extractionUseCase: any ExtractionUseCase) {
+    public init(
+        entryUseCase: any EntryUseCase,
+        extractionUseCase: any ExtractionUseCase,
+        followUpQuestionsUseCase: any FollowUpQuestionsUseCase,
+        notificationScheduler: any NotificationScheduler
+    ) {
         self.entryUseCase = entryUseCase
         self.extractionUseCase = extractionUseCase
+        self.followUpQuestionsUseCase = followUpQuestionsUseCase
+        self.notificationScheduler = notificationScheduler
         _viewModel = StateObject(wrappedValue: JournalListViewModel(entryUseCase: entryUseCase))
     }
 
@@ -43,11 +52,10 @@ public struct JournalListView: View {
             .navigationDestination(for: UUID.self) { id in
                 if let entry = viewModel.entry(for: id) {
                     if entry.status == .pending {
-                        DraftReviewView(
-                            sessionDate: entry.sessionDate,
-                            classType: entry.classType,
-                            rawText: entry.rawText,
-                            existingEntryID: entry.id,
+                        FollowUpView(
+                            entry: entry,
+                            followUpUseCase: followUpQuestionsUseCase,
+                            notificationScheduler: notificationScheduler,
                             extractionUseCase: extractionUseCase,
                             entryUseCase: entryUseCase,
                             onSaved: { Task { await viewModel.reload() } }
