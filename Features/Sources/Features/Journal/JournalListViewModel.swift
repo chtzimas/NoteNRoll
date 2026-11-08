@@ -27,10 +27,6 @@ final class JournalListViewModel: ObservableObject {
     var pendingEntries: [Entry] { filteredEntries.filter { $0.status == .pending } }
     var structuredEntries: [Entry] { filteredEntries.filter { $0.status == .structured } }
 
-    func entry(for id: UUID) -> Entry? {
-        entries.first { $0.id == id }
-    }
-
     func reload() async {
         do {
             entries = try await entryUseCase.listEntries()

@@ -30,7 +30,7 @@ public enum TechniqueType: String, Codable, CaseIterable, Hashable, Sendable {
     }
 }
 
-public struct Technique: Codable, Equatable, Sendable {
+public struct Technique: Codable, Hashable, Sendable {
     public var name: String
     public var position: String?
     public var type: TechniqueType
@@ -45,7 +45,7 @@ public struct Technique: Codable, Equatable, Sendable {
 /// A single training session: starts as a raw note and becomes `structured` once the
 /// user approves an extracted draft. `rawText` is never discarded, so extraction can
 /// be rerun later against an improved prompt or schema.
-public struct Entry: Identifiable, Codable, Equatable, Sendable {
+public struct Entry: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
     public var sessionDate: Date
     public var classType: ClassType

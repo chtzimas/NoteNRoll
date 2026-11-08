@@ -10,27 +10,8 @@ struct DraftReviewView: View {
     @StateObject private var viewModel: DraftReviewViewModel
     private let onSaved: () -> Void
 
-    init(
-        sessionDate: Date,
-        classType: ClassType,
-        rawText: String,
-        extractionContext: String? = nil,
-        existingEntryID: UUID?,
-        startsInManualMode: Bool = false,
-        extractionUseCase: any ExtractionUseCase,
-        entryUseCase: any EntryUseCase,
-        onSaved: @escaping () -> Void = {}
-    ) {
-        _viewModel = StateObject(wrappedValue: DraftReviewViewModel(
-            sessionDate: sessionDate,
-            classType: classType,
-            rawText: rawText,
-            extractionContext: extractionContext,
-            existingEntryID: existingEntryID,
-            startsInManualMode: startsInManualMode,
-            extractionUseCase: extractionUseCase,
-            entryUseCase: entryUseCase
-        ))
+    init(viewModel: DraftReviewViewModel, onSaved: @escaping () -> Void = {}) {
+        _viewModel = StateObject(wrappedValue: viewModel)
         self.onSaved = onSaved
     }
 

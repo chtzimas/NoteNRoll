@@ -1,14 +1,13 @@
 import SwiftUI
-import JournalCore
 
 /// Mostly a placeholder for now — belt/stripes, curriculum, import and export all
 /// arrive with later milestones. The API key field is real: extraction needs
 /// somewhere for the user to enter it, and Settings is where the brief puts it.
 public struct YouView: View {
-    @StateObject private var viewModel: YouViewModel
+    @ObservedObject private var viewModel: YouViewModel
 
-    public init(apiKeyUseCase: any APIKeyUseCase) {
-        _viewModel = StateObject(wrappedValue: YouViewModel(apiKeyUseCase: apiKeyUseCase))
+    public init(viewModel: YouViewModel) {
+        self.viewModel = viewModel
     }
 
     public var body: some View {

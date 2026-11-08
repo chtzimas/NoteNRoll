@@ -1,15 +1,17 @@
 import Foundation
 import JournalCore
 
+/// Constructed directly by the app target (no coordinator needed — no
+/// navigation here), so both the class and its initializer are public.
 @MainActor
-final class YouViewModel: ObservableObject {
+public final class YouViewModel: ObservableObject {
     @Published var apiKeyInput = ""
     @Published private(set) var savedKeyPresent = false
     @Published var statusMessage: String?
 
     private let apiKeyUseCase: any APIKeyUseCase
 
-    init(apiKeyUseCase: any APIKeyUseCase) {
+    public init(apiKeyUseCase: any APIKeyUseCase) {
         self.apiKeyUseCase = apiKeyUseCase
     }
 

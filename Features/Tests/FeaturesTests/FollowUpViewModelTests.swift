@@ -104,4 +104,42 @@ struct FollowUpViewModelTests {
 
         #expect(scheduler.canceledEntryIDs == [entry.id])
     }
+
+    @Test
+    func draftReviewParamsCarriesEntryFieldsAndExtractionContext() async throws {
+        let followUp = FakeFollowUpQuestionsUseCase()
+        followUp.result = .success(["Which grip?"])
+        let entry = makeEntry()
+        let viewModel = FollowUpViewModel(
+            entry: entry,
+            followUpUseCase: followUp,
+            notificationScheduler: FakeNotificationScheduler()
+        )
+        await viewModel.loadQuestions()
+        viewModel.answers = ["Collar grip"]
+
+        let params = viewModel.draftReviewParams()
+
+        #expect(params.sessionDate == entry.sessionDate)
+        #expect(params.classType == entry.classType)
+        #expect(params.rawText == entry.rawText)
+        #expect(params.existingEntryID == entry.id)
+        #expect(params.startsInManualMode == false)
+        #expect(params.extractionContext == viewModel.extractionContext)
+    }
+
+    @Test
+    func draftReviewParamsInManualModeDropsExtractionContext() async throws {
+        let entry = makeEntry()
+        let viewModel = FollowUpViewModel(
+            entry: entry,
+            followUpUseCase: FakeFollowUpQuestionsUseCase(),
+            notificationScheduler: FakeNotificationScheduler()
+        )
+
+        let params = viewModel.draftReviewParams(startsInManualMode: true)
+
+        #expect(params.startsInManualMode == true)
+        #expect(params.extractionContext == nil)
+    }
 }
