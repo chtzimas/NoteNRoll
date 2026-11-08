@@ -75,6 +75,7 @@ public struct LogEntryView: View {
                 }
             }
         }
+        .logScreenAppearance("\(Self.self)")
     }
 
     private var recordButton: some View {

@@ -12,5 +12,6 @@ public struct InsightsPlaceholderView: View {
             )
             .navigationTitle("Insights")
         }
+        .logScreenAppearance("\(Self.self)")
     }
 }

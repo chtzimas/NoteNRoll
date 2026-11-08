@@ -43,6 +43,7 @@ struct FollowUpView: View {
         .navigationTitle("Debrief")
         .inlineNavigationBarTitleIfAvailable()
         .task { await viewModel.loadQuestions() }
+        .logScreenAppearance("\(Self.self)")
     }
 
     /// This entry is already saved regardless — nothing here should be a dead

@@ -63,6 +63,7 @@ struct DraftReviewView: View {
                 await viewModel.runExtraction()
             }
         }
+        .logScreenAppearance("\(Self.self)")
     }
 
     private var failedView: some View {

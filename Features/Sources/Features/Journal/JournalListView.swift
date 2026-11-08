@@ -82,6 +82,7 @@ public struct JournalListView: View {
         }
         .onAppear { Task { await viewModel.reload() } }
         .refreshable { await viewModel.reload() }
+        .logScreenAppearance("\(Self.self)")
     }
 
     private var classTypeFilterPicker: some View {

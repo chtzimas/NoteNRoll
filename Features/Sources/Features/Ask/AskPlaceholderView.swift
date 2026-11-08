@@ -12,5 +12,6 @@ public struct AskPlaceholderView: View {
             )
             .navigationTitle("Ask")
         }
+        .logScreenAppearance("\(Self.self)")
     }
 }
