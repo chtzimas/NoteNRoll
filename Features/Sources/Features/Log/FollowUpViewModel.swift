@@ -78,4 +78,18 @@ final class FollowUpViewModel: ObservableObject {
     func markHandled() {
         notificationScheduler.cancelFollowUpNotification(entryID: entry.id)
     }
+
+    /// Packages everything the next screen (`DraftReviewView`, via whichever
+    /// coordinator hosts this flow) needs — a plain value, not a view model, so
+    /// this view model never has to know how to construct the next one.
+    func draftReviewParams(startsInManualMode: Bool = false) -> DraftReviewParams {
+        DraftReviewParams(
+            sessionDate: entry.sessionDate,
+            classType: entry.classType,
+            rawText: entry.rawText,
+            extractionContext: startsInManualMode ? nil : extractionContext,
+            existingEntryID: entry.id,
+            startsInManualMode: startsInManualMode
+        )
+    }
 }

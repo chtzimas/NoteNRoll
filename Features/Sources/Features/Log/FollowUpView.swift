@@ -3,46 +3,39 @@ import JournalCore
 
 /// Shown right after a pending entry is saved (from the Log tab) or whenever the
 /// user opens a pending entry later from the Journal list — same view either way.
+/// Purely declarative: it never constructs `DraftReviewView` or its view model
+/// itself, since this view is hosted by two different navigation stacks (Journal's
+/// own, and the Log tab's sheet) that need the result wrapped differently. It only
+/// reports what happened via `onContinue`; the owning coordinator decides what to
+/// push.
 struct FollowUpView: View {
     @StateObject private var viewModel: FollowUpViewModel
-    private let extractionUseCase: any ExtractionUseCase
-    private let entryUseCase: any EntryUseCase
-    private let onSaved: () -> Void
+    private let onContinue: (DraftReviewParams) -> Void
 
-    init(
-        entry: Entry,
-        followUpUseCase: any FollowUpQuestionsUseCase,
-        notificationScheduler: any NotificationScheduler,
-        extractionUseCase: any ExtractionUseCase,
-        entryUseCase: any EntryUseCase,
-        onSaved: @escaping () -> Void = {}
-    ) {
-        _viewModel = StateObject(wrappedValue: FollowUpViewModel(
-            entry: entry,
-            followUpUseCase: followUpUseCase,
-            notificationScheduler: notificationScheduler
-        ))
-        self.extractionUseCase = extractionUseCase
-        self.entryUseCase = entryUseCase
-        self.onSaved = onSaved
+    init(viewModel: FollowUpViewModel, onContinue: @escaping (DraftReviewParams) -> Void) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.onContinue = onContinue
     }
 
     var body: some View {
         Group {
             switch viewModel.phase {
-            case .loadingQuestions:
+            case .loadingQuestions, .noQuestionsNeeded:
                 ProgressView("Checking for follow-ups…")
             case .failed:
                 failedView
-            case .noQuestionsNeeded:
-                draftReview(extractionContext: viewModel.entry.rawText)
             case .answering:
                 answeringForm
             }
         }
         .navigationTitle("Debrief")
         .inlineNavigationBarTitleIfAvailable()
-        .task { await viewModel.loadQuestions() }
+        .task {
+            await viewModel.loadQuestions()
+            if viewModel.phase == .noQuestionsNeeded {
+                onContinue(viewModel.draftReviewParams())
+            }
+        }
         .logScreenAppearance("\(Self.self)")
     }
 
@@ -61,12 +54,10 @@ struct FollowUpView: View {
                 Text(viewModel.errorMessage ?? "Couldn't reach Claude.")
                     .foregroundStyle(.secondary)
                 Button("Try again") { Task { await viewModel.loadQuestions() } }
-                NavigationLink {
-                    draftReview(extractionContext: viewModel.entry.rawText, startsInManualMode: true)
-                } label: {
-                    Text("Continue without AI")
+                Button("Continue without AI") {
+                    viewModel.markHandled()
+                    onContinue(viewModel.draftReviewParams(startsInManualMode: true))
                 }
-                .simultaneousGesture(TapGesture().onEnded { viewModel.markHandled() })
             } header: {
                 Text("Couldn't check for follow-ups")
             }
@@ -88,27 +79,11 @@ struct FollowUpView: View {
             }
 
             Section {
-                NavigationLink {
-                    draftReview(extractionContext: viewModel.extractionContext)
-                } label: {
-                    Text("Continue")
+                Button("Continue") {
+                    viewModel.markHandled()
+                    onContinue(viewModel.draftReviewParams())
                 }
-                .simultaneousGesture(TapGesture().onEnded { viewModel.markHandled() })
             }
         }
-    }
-
-    private func draftReview(extractionContext: String, startsInManualMode: Bool = false) -> some View {
-        DraftReviewView(
-            sessionDate: viewModel.entry.sessionDate,
-            classType: viewModel.entry.classType,
-            rawText: viewModel.entry.rawText,
-            extractionContext: extractionContext,
-            existingEntryID: viewModel.entry.id,
-            startsInManualMode: startsInManualMode,
-            extractionUseCase: extractionUseCase,
-            entryUseCase: entryUseCase,
-            onSaved: onSaved
-        )
     }
 }

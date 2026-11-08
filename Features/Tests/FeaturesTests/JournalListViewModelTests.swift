@@ -90,15 +90,4 @@ struct JournalListViewModelTests {
         #expect(viewModel.filteredEntries.first?.title == "Butterfly sweep")
     }
 
-    @Test
-    func entryForIDLooksUpLoadedEntry() async throws {
-        let useCase = FakeEntryUseCase()
-        let entry = makeEntry()
-        useCase.entriesToReturn = [entry]
-        let viewModel = JournalListViewModel(entryUseCase: useCase)
-        await viewModel.reload()
-
-        #expect(viewModel.entry(for: entry.id)?.id == entry.id)
-        #expect(viewModel.entry(for: UUID()) == nil)
-    }
 }

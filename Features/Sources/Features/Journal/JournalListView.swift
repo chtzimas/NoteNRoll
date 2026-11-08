@@ -1,84 +1,58 @@
 import SwiftUI
 import JournalCore
 
-public struct JournalListView: View {
-    @StateObject private var viewModel: JournalListViewModel
-    private let extractionUseCase: any ExtractionUseCase
-    private let entryUseCase: any EntryUseCase
-    private let followUpQuestionsUseCase: any FollowUpQuestionsUseCase
-    private let notificationScheduler: any NotificationScheduler
+/// Pure content: no `NavigationStack`, no `.navigationDestination` — those are
+/// `JournalCoordinatorView`'s job, since building a destination requires use-case
+/// dependencies this view never sees. Row taps push a `JournalRoute` directly
+/// via `NavigationLink(value:)`, resolved by whatever ancestor stack owns it.
+/// Internal, not public: only `JournalCoordinatorView` (same module) constructs this.
+struct JournalListView: View {
+    @ObservedObject private var viewModel: JournalListViewModel
 
-    public init(
-        entryUseCase: any EntryUseCase,
-        extractionUseCase: any ExtractionUseCase,
-        followUpQuestionsUseCase: any FollowUpQuestionsUseCase,
-        notificationScheduler: any NotificationScheduler
-    ) {
-        self.entryUseCase = entryUseCase
-        self.extractionUseCase = extractionUseCase
-        self.followUpQuestionsUseCase = followUpQuestionsUseCase
-        self.notificationScheduler = notificationScheduler
-        _viewModel = StateObject(wrappedValue: JournalListViewModel(entryUseCase: entryUseCase))
+    init(viewModel: JournalListViewModel) {
+        self.viewModel = viewModel
     }
 
-    public var body: some View {
-        NavigationStack {
-            List {
-                if !viewModel.pendingEntries.isEmpty {
-                    Section("Not structured yet") {
-                        ForEach(viewModel.pendingEntries) { entry in
-                            NavigationLink(value: entry.id) {
-                                PendingEntryRow(entry: entry)
-                            }
+    var body: some View {
+        List {
+            if !viewModel.pendingEntries.isEmpty {
+                Section("Not structured yet") {
+                    ForEach(viewModel.pendingEntries) { entry in
+                        NavigationLink(value: JournalRoute.followUp(entry)) {
+                            PendingEntryRow(entry: entry)
                         }
                     }
                 }
+            }
 
-                Section {
-                    ForEach(viewModel.structuredEntries) { entry in
-                        NavigationLink(value: entry.id) {
-                            EntryRow(entry: entry)
-                        }
+            Section {
+                ForEach(viewModel.structuredEntries) { entry in
+                    NavigationLink(value: JournalRoute.entryDetail(entry)) {
+                        EntryRow(entry: entry)
                     }
                 }
             }
-            .searchable(text: $viewModel.searchText, prompt: "Search techniques, notes")
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    classTypeFilterPicker
-                }
+        }
+        .searchable(text: $viewModel.searchText, prompt: "Search techniques, notes")
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                classTypeFilterPicker
             }
-            .navigationTitle("Journal")
-            .navigationDestination(for: UUID.self) { id in
-                if let entry = viewModel.entry(for: id) {
-                    if entry.status == .pending {
-                        FollowUpView(
-                            entry: entry,
-                            followUpUseCase: followUpQuestionsUseCase,
-                            notificationScheduler: notificationScheduler,
-                            extractionUseCase: extractionUseCase,
-                            entryUseCase: entryUseCase,
-                            onSaved: { Task { await viewModel.reload() } }
-                        )
-                    } else {
-                        EntryDetailView(entry: entry)
-                    }
-                }
+        }
+        .navigationTitle("Journal")
+        .overlay {
+            if viewModel.entries.isEmpty {
+                ContentUnavailableView(
+                    "No sessions yet",
+                    systemImage: "figure.martial.arts",
+                    description: Text("Log your first class from the Log tab.")
+                )
             }
-            .overlay {
-                if viewModel.entries.isEmpty {
-                    ContentUnavailableView(
-                        "No sessions yet",
-                        systemImage: "figure.martial.arts",
-                        description: Text("Log your first class from the Log tab.")
-                    )
-                }
-            }
-            .alert("Couldn't load journal", isPresented: .constant(viewModel.loadError != nil)) {
-                Button("OK") { viewModel.loadError = nil }
-            } message: {
-                Text(viewModel.loadError ?? "")
-            }
+        }
+        .alert("Couldn't load journal", isPresented: .constant(viewModel.loadError != nil)) {
+            Button("OK") { viewModel.loadError = nil }
+        } message: {
+            Text(viewModel.loadError ?? "")
         }
         .onAppear { Task { await viewModel.reload() } }
         .refreshable { await viewModel.reload() }

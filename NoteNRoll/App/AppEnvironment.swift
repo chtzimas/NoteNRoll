@@ -1,17 +1,17 @@
 import Foundation
 import JournalCore
+import Features
 
 /// Composition root. The one place concrete `JournalCore` Data types (GRDB, Keychain,
-/// `DirectClaudeClient`) get wired together and handed to use cases — everything
-/// above this, views and view models alike, depends only on the use-case protocols.
+/// `DirectClaudeClient`) get wired together, handed to use cases, and those use cases
+/// handed to coordinators — the only things downstream of here (coordinators, view
+/// models, views) ever see are use-case protocols, and only coordinators see those.
+/// Views never construct a view model or a use case; they receive one already built.
 @MainActor
 final class AppEnvironment: ObservableObject {
-    let entryUseCase: any EntryUseCase
-    let extractionUseCase: any ExtractionUseCase
-    let followUpQuestionsUseCase: any FollowUpQuestionsUseCase
-    let apiKeyUseCase: any APIKeyUseCase
-    let notificationScheduler: any NotificationScheduler
-    let speechTranscriber: any SpeechTranscriber
+    let journalCoordinator: JournalCoordinator
+    let logCoordinator: LogCoordinator
+    let youViewModel: YouViewModel
 
     init() {
         let database: AppDatabase
@@ -25,12 +25,27 @@ final class AppEnvironment: ObservableObject {
         let repository = GRDBEntryRepository(database: database)
         let llmClient = DirectClaudeClient(apiKeyStore: apiKeyStore)
 
-        self.entryUseCase = DefaultEntryUseCase(repository: repository)
-        self.extractionUseCase = DefaultExtractionUseCase(llmClient: llmClient)
-        self.followUpQuestionsUseCase = DefaultFollowUpQuestionsUseCase(llmClient: llmClient)
-        self.apiKeyUseCase = DefaultAPIKeyUseCase(store: apiKeyStore)
-        self.notificationScheduler = UserNotificationScheduler()
-        self.speechTranscriber = SpeechKitTranscriber()
+        let entryUseCase = DefaultEntryUseCase(repository: repository)
+        let extractionUseCase = DefaultExtractionUseCase(llmClient: llmClient)
+        let followUpQuestionsUseCase = DefaultFollowUpQuestionsUseCase(llmClient: llmClient)
+        let apiKeyUseCase = DefaultAPIKeyUseCase(store: apiKeyStore)
+        let notificationScheduler = UserNotificationScheduler()
+        let speechTranscriber = SpeechKitTranscriber()
+
+        self.journalCoordinator = JournalCoordinator(
+            entryUseCase: entryUseCase,
+            extractionUseCase: extractionUseCase,
+            followUpQuestionsUseCase: followUpQuestionsUseCase,
+            notificationScheduler: notificationScheduler
+        )
+        self.logCoordinator = LogCoordinator(
+            entryUseCase: entryUseCase,
+            extractionUseCase: extractionUseCase,
+            followUpQuestionsUseCase: followUpQuestionsUseCase,
+            notificationScheduler: notificationScheduler,
+            speechTranscriber: speechTranscriber
+        )
+        self.youViewModel = YouViewModel(apiKeyUseCase: apiKeyUseCase)
     }
 
     private static func databaseURL() -> URL {

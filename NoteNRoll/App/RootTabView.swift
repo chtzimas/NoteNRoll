@@ -6,30 +6,19 @@ struct RootTabView: View {
 
     var body: some View {
         TabView {
-            JournalListView(
-                entryUseCase: environment.entryUseCase,
-                extractionUseCase: environment.extractionUseCase,
-                followUpQuestionsUseCase: environment.followUpQuestionsUseCase,
-                notificationScheduler: environment.notificationScheduler
-            )
+            JournalCoordinatorView(coordinator: environment.journalCoordinator)
                 .tabItem { Label("Journal", systemImage: "book.closed") }
 
             AskPlaceholderView()
                 .tabItem { Label("Ask", systemImage: "bubble.left.and.bubble.right") }
 
-            LogEntryView(
-                extractionUseCase: environment.extractionUseCase,
-                entryUseCase: environment.entryUseCase,
-                followUpQuestionsUseCase: environment.followUpQuestionsUseCase,
-                notificationScheduler: environment.notificationScheduler,
-                speechTranscriber: environment.speechTranscriber
-            )
+            LogCoordinatorView(coordinator: environment.logCoordinator)
                 .tabItem { Label("Log", systemImage: "mic.circle.fill") }
 
             InsightsPlaceholderView()
                 .tabItem { Label("Insights", systemImage: "chart.line.uptrend.xyaxis") }
 
-            YouView(apiKeyUseCase: environment.apiKeyUseCase)
+            YouView(viewModel: environment.youViewModel)
                 .tabItem { Label("You", systemImage: "person") }
         }
     }

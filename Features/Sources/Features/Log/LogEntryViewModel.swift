@@ -11,12 +11,16 @@ final class LogEntryViewModel: ObservableObject {
     @Published var rawText = ""
     @Published private(set) var isRecording = false
     @Published var recordingError: String?
+    @Published private(set) var isSaving = false
+    @Published var saveError: String?
 
     private let speechTranscriber: any SpeechTranscriber
+    private let entryUseCase: any EntryUseCase
     private var transcriptionTask: Task<Void, Never>?
 
-    init(speechTranscriber: any SpeechTranscriber) {
+    init(speechTranscriber: any SpeechTranscriber, entryUseCase: any EntryUseCase) {
         self.speechTranscriber = speechTranscriber
+        self.entryUseCase = entryUseCase
     }
 
     var canSubmit: Bool {
@@ -60,6 +64,28 @@ final class LogEntryViewModel: ObservableObject {
         transcriptionTask?.cancel()
         transcriptionTask = nil
         isRecording = false
+    }
+
+    /// Saves immediately as `pending` — capture stays instant and offline-safe
+    /// — and clears the form on success. Returns the saved entry so the caller
+    /// (its coordinator) can present the follow-up flow for it.
+    @discardableResult
+    func savePendingAndReset() async -> Entry? {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let entry = try await entryUseCase.savePending(
+                sessionDate: sessionDate,
+                classType: classType,
+                rawText: rawText,
+                existingEntryID: nil
+            )
+            reset()
+            return entry
+        } catch {
+            saveError = String(describing: error)
+            return nil
+        }
     }
 
     func reset() {
