@@ -58,5 +58,6 @@ struct EntryDetailView: View {
         }
         .navigationTitle("Entry")
         .inlineNavigationBarTitleIfAvailable()
+        .logScreenAppearance("\(Self.self)")
     }
 }

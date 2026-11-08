@@ -59,5 +59,6 @@ public struct YouView: View {
                 Text(viewModel.statusMessage ?? "")
             }
         }
+        .logScreenAppearance("\(Self.self)")
     }
 }

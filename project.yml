@@ -31,6 +31,8 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "NoteNRoll records your voice to transcribe training notes on-device."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "NoteNRoll transcribes your voice notes on-device into training entries."
 schemes:
   NoteNRoll:
     build:

@@ -14,7 +14,9 @@ struct DraftReviewView: View {
         sessionDate: Date,
         classType: ClassType,
         rawText: String,
+        extractionContext: String? = nil,
         existingEntryID: UUID?,
+        startsInManualMode: Bool = false,
         extractionUseCase: any ExtractionUseCase,
         entryUseCase: any EntryUseCase,
         onSaved: @escaping () -> Void = {}
@@ -23,7 +25,9 @@ struct DraftReviewView: View {
             sessionDate: sessionDate,
             classType: classType,
             rawText: rawText,
+            extractionContext: extractionContext,
             existingEntryID: existingEntryID,
+            startsInManualMode: startsInManualMode,
             extractionUseCase: extractionUseCase,
             entryUseCase: entryUseCase
         ))
@@ -54,7 +58,12 @@ struct DraftReviewView: View {
                 }
             }
         }
-        .task { await viewModel.runExtraction() }
+        .task {
+            if !viewModel.startsInManualMode {
+                await viewModel.runExtraction()
+            }
+        }
+        .logScreenAppearance("\(Self.self)")
     }
 
     private var failedView: some View {
@@ -63,6 +72,7 @@ struct DraftReviewView: View {
         } description: {
             Text(viewModel.errorMessage ?? "Something went wrong talking to Claude.")
         } actions: {
+            Button("Enter manually") { viewModel.enterManualMode() }
             Button("Save as-is, structure later") { Task { await save { await viewModel.saveAsPending() } } }
             Button("Try again") { Task { await viewModel.runExtraction() } }
         }

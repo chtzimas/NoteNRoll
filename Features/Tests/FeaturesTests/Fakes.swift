@@ -62,12 +62,69 @@ final class FakeEntryUseCase: EntryUseCase, @unchecked Sendable {
 
 final class FakeExtractionUseCase: ExtractionUseCase, @unchecked Sendable {
     var result: Result<DraftExtraction, Error> = .success(DraftExtraction())
+    private(set) var receivedRawText: String?
 
     func extract(rawText: String) async throws -> DraftExtraction {
+        receivedRawText = rawText
         switch result {
         case .success(let draft): return draft
         case .failure(let error): throw error
         }
+    }
+}
+
+final class FakeFollowUpQuestionsUseCase: FollowUpQuestionsUseCase, @unchecked Sendable {
+    var result: Result<[String], Error> = .success([])
+
+    func generateQuestions(rawText: String) async throws -> [String] {
+        switch result {
+        case .success(let questions): return questions
+        case .failure(let error): throw error
+        }
+    }
+}
+
+final class FakeNotificationScheduler: NotificationScheduler, @unchecked Sendable {
+    private(set) var scheduledEntryIDs: [UUID] = []
+    private(set) var canceledEntryIDs: [UUID] = []
+    var authorizationGranted = true
+
+    func requestAuthorization() async -> Bool { authorizationGranted }
+
+    func scheduleFollowUpNotification(entryID: UUID, questionCount: Int) async throws {
+        scheduledEntryIDs.append(entryID)
+    }
+
+    func cancelFollowUpNotification(entryID: UUID) {
+        canceledEntryIDs.append(entryID)
+    }
+}
+
+final class FakeSpeechTranscriber: SpeechTranscriber, @unchecked Sendable {
+    var authorizationGranted = true
+    var transcripts: [String] = []
+    var streamError: Error?
+    private(set) var stopCallCount = 0
+
+    func requestAuthorization() async -> Bool { authorizationGranted }
+
+    func startTranscribing() async throws -> AsyncThrowingStream<String, Error> {
+        let transcripts = transcripts
+        let streamError = streamError
+        return AsyncThrowingStream { continuation in
+            for transcript in transcripts {
+                continuation.yield(transcript)
+            }
+            if let streamError {
+                continuation.finish(throwing: streamError)
+            } else {
+                continuation.finish()
+            }
+        }
+    }
+
+    func stopTranscribing() {
+        stopCallCount += 1
     }
 }
 
